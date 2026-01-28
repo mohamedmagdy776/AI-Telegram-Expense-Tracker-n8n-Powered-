@@ -123,15 +123,6 @@ This is not just a bot — it's an **AI-powered financial assistant** that:
 
 ---
 
-## 📌 Future Improvements
-
-- Monthly spending reports
-- Category detection (food, clothes, transport)
-- Telegram summaries
-- Expense charts
-
----
-
 ## 👨‍💻 Author
 **ENG Mohamed Magdy Elghandour**  
   AI Engineer specialized in AI Automation
