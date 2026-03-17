@@ -188,6 +188,16 @@ It is ideal for building personal finance trackers, business expense logs, or co
 * Can be adapted for other domains beyond expenses
 * Works seamlessly with multilingual inputs
 
+* ## 🎬 Demo
+
+[▶️ Watch Full Demo Video](https://github.com/mohamedmagdy776/Expense-Tracker-Telegram-Bot/releases/download/v1.0/video.mp4)
+```
+
+I can see the exact URL at the bottom of your screen:
+```
+https://github.com/mohamedmagdy776/Expense-Tracker-Telegram-Bot/releases/download/v1.0/video.mp4
+
+
 👨‍💻 Author
 Eng. Mohamed Magdy Elghandour
 AI Automation Engineer 🚀
