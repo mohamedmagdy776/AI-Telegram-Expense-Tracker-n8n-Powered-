@@ -1,0 +1,463 @@
+{
+  "name": "Expense Tracker Telegram Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1424,
+        48
+      ],
+      "id": "3d7afd81-97f4-4b77-bb6e-5c5c5f8878ec",
+      "name": "Telegram Trigger",
+      "webhookId": "fb8a9509-bb1f-4bfc-90b9-53052ba6625b",
+      "credentials": {
+        "telegramApi": {
+          "id": "pLYAHR23Zayo9cfD",
+          "name": "Telegram account 41"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "0e0c5d9c-bc0d-44ea-b5b2-7209f69d2320"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text "
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4140545e-ccec-4154-b2be-99a250f174cb",
+                    "leftValue": "={{ $json.message.voice.file_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voice "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1104,
+        48
+      ],
+      "id": "7ee758dc-cba0-40b1-be18-c5b3dba32379",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('Telegram Trigger').item.json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        160
+      ],
+      "id": "d42dda30-aa09-4bf4-9ea7-15210624889a",
+      "name": "Get a file",
+      "webhookId": "ccd84ee6-fd1e-43f3-b10c-e04ef525e4e1",
+      "credentials": {
+        "telegramApi": {
+          "id": "ZtA1rdPA4PdQlvyY",
+          "name": "Telegram account 42"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -624,
+        160
+      ],
+      "id": "33918afb-4739-4647-b5ed-511e9239dca8",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "D5VwW9FhMG7h3tmy",
+          "name": "OpenAI Account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6d847b1d-e19d-4815-9dda-8f8a8549d584",
+              "name": "Text ",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -736,
+        -176
+      ],
+      "id": "35240f67-9583-4943-900a-dc2572b1bdb2",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json['Text '] }} ?? {{ $json.text }}\n\nIMPORTANT: Today's date is {{ $now.format(\"yyyy-MM-dd\") }}",
+        "options": {
+          "systemMessage": "=Your role is a specialized Financial Data Extraction Agent for n8n workflows.\nYou must process user messages about expenses and convert them into a structured JSON format.\n\n### Constraints:\n1. Output MUST be ONLY a valid JSON object.\n2. No conversational text or markdown code blocks (no ```json).\n3. If information is missing, use \"null\".\n4. Identify the merchant, price, item, quantity, and date.\n\n### VERY IMPORTANT RULE FOR DATE:\n- You MUST calculate the exact date based on today's date.\n- Today’s date will be provided inside the user message OR assume current date.\n- Convert relative dates like:\n  - \"today\"\n  - \"yesterday\"\n  - \"day before yesterday\"\ninto an EXACT date in this format:\nYYYY-MM-DD\n \n##Today's date is {{ $now.format(\"yyyy-MM-dd\") }}\n\nExample:\nIf today = 2026-03-17\n- yesterday → 2026-03-16\n- day before yesterday → 2026-03-15\n\n\n\n### Required JSON Structure:\n{\n  \"expense_details\": {\n    \"merchant\": \"string (the place)\",\n    \"price\": \"number+Currency\",\n    \"item\": \"string\",\n    \"quantity\": \"number (how many items bought, e.g. Three=3, a pair=2, default 1)\",\n    \"date\": \"YYYY-MM-DD\",\n    \"currency\": \"string (default EGP if not specified)\"\n  },\n  \"original_query\": \"string (the user input)\"\n}\n\n### Currency Rules:\nIf user says \"جنيه\" = EGP\n\"دولار\" = USD\n\"يورو\" = EUR\n\"ر.س\" = SAR\n\n### Example Input:\n\"اشتريت بيتزا من بيتزا هات النهاردة ب 400 جنية\"\n\n### Example Output:\n{\n  \"expense_details\": {\n    \"merchant\": \"Pizza Hut\",\n    \"price\": \"400 EGP\",\n    \"item\": \"Pizza\",\n    \"quantity\": 1,\n    \"date\": \"2026-01-25\",\n    \"currency\": \"EGP\"\n  },\n  \"original_query\": \"اشتريت بيتزا من بيتزا هات النهاردة ب 400 جنية\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -352,
+        -48
+      ],
+      "id": "5bb7243f-5e31-43ea-b0d5-0522e714ba6e",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        176
+      ],
+      "id": "9bdd3f84-f7a6-4648-8305-3b20f8b73802",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "D5VwW9FhMG7h3tmy",
+          "name": "OpenAI Account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 35
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -192,
+        192
+      ],
+      "id": "1ddb8c79-f899-48a5-9edb-9b4cc5633a0e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\n\n// ✅ نجيب التاريخ بتوقيت القاهرة بشكل صحيح\nconst cairoNow = new Date(\n  now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' })\n);\n\n// ناخد اليوم بس بدون وقت\nconst todayDate = new Date(\n  cairoNow.getFullYear(),\n  cairoNow.getMonth(),\n  cairoNow.getDate()\n);\n\nconst formatDate = (date) => {\n  const day = String(date.getDate()).padStart(2, '0');\n  const month = String(date.getMonth() + 1).padStart(2, '0');\n  const year = date.getFullYear();\n  return `${year}-${month}-${day}`;\n};\n\nconst aiOutput = $('AI Agent').item.json.output;\nconst parsedOutput = typeof aiOutput === 'string' ? JSON.parse(aiOutput) : aiOutput;\n\nconst expense = parsedOutput.expense_details;\nconst originalQuery = (expense.original_query || '').toLowerCase();\n\nlet d = new Date(todayDate);\nlet finalDate;\n\nif (originalQuery.includes('day before yesterday')) {\n  d.setDate(d.getDate() - 2);\n  finalDate = formatDate(d);\n\n} else if (originalQuery.includes('yesterday')) {\n  d.setDate(d.getDate() - 1);\n  finalDate = formatDate(d);\n\n} else if (originalQuery.includes('today')) {\n  finalDate = formatDate(d);\n\n} else if (expense.date) {\n  const parsed = new Date(expense.date);\n  finalDate = !isNaN(parsed.getTime()) ? formatDate(parsed) : formatDate(d);\n\n} else {\n  finalDate = formatDate(d);\n}\n\nreturn [{\n  json: {\n    price: parseFloat((expense.price || '0').toString().replace(/[^0-9.]/g, '')) || 0,\n    item: expense.item,\n    place: expense.merchant,\n    date: finalDate,\n    currency: expense.currency || 'EGP',\n    number_of_items: expense.quantity || 1\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -48
+      ],
+      "id": "2032b18b-bddb-4fb3-ab7a-039573bc857c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1TacmurYyRDKOl8NfFguQbyBMYiZu7u3GcIUvHayCqqo",
+          "mode": "list",
+          "cachedResultName": "Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1TacmurYyRDKOl8NfFguQbyBMYiZu7u3GcIUvHayCqqo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1TacmurYyRDKOl8NfFguQbyBMYiZu7u3GcIUvHayCqqo/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "price": "={{ $json.price }}",
+            "item": "={{ $json.item }}",
+            "place": "={{ $json.place }}",
+            "date": "={{ $json.date }}",
+            "Currency": "={{ $json.currency }}",
+            "number of items ": "={{ $json.number_of_items }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "item",
+              "displayName": "item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "place",
+              "displayName": "place",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Currency",
+              "displayName": "Currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "number of items ",
+              "displayName": "number of items ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        -48
+      ],
+      "id": "fb42b515-1f06-456d-9243-8b7a11fcd015",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YxmiyDKwSUAefV7p",
+          "name": "Google Sheets account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "f2769777-c509-42b1-ae17-9edbc1598cc7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1d52e26502ab362c0b60f91c6d37756d0d545fbe1c12904239c10acad5a587bd"
+  },
+  "id": "ckTiXxY2x3WaGzKllS8_4",
+  "tags": []
+}
